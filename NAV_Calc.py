@@ -61,7 +61,7 @@ spot_url = "https://api.binance.com/api/v3/myTrades"
 
 #Make a for loop for all traded tikkers: 
 ##########################################################################################################
-my_tickers = ["XRPUSDT", "LINKUSDT", "LTCUSDT"]
+my_tickers = ["XRPUSDT", "LINKUSDT", "LTCUSDT", "BTCUSDT", "ETHUSDT"]
 
 ##########################################################################################################
 
@@ -129,9 +129,11 @@ complete_df_s = complete_df_s.sort_values(by="date")
 #Reset index
 complete_df_s = complete_df_s.reset_index(drop=True)
 
+
+
 #####################
 
-my_tickers_f = ["XRPUSD_220624", "LINKUSD_220624", "LTCUSD_220624"]
+my_tickers_f = ["XRPUSD_220624", "LINKUSD_220624", "LTCUSD_220624", "ETHUSD_220930"] #############MANUALLY INPUT ALL POSITIONS OPENED (view in Binance account directly)
 
 
 fut_url = "https://dapi.binance.com/dapi/v1/userTrades"
@@ -141,7 +143,7 @@ fut_url = "https://dapi.binance.com/dapi/v1/userTrades"
 complete_list_f = []
 
 #For loop: 
-for i in range(0,len(my_tickers)):
+for i in range(0,len(my_tickers_f)):
 
     #Defining UTC timestamp of NOW for request
     now = datetime.now(timezone.utc)
@@ -188,11 +190,11 @@ complete_df_f = complete_df_f.reset_index(drop=True)
 
 
 
+
 #Check spot price matches
 
-
-#make array for avrging spot prices
 prices_spot = []
+prices_fut = []
 timestamps_spot =[]
 amounts_spot = []
 
@@ -212,8 +214,13 @@ for i in complete_df_s.index:
     spot_amountx = float(complete_df_s['quoteQty'][i])
     spot_orderidx = complete_df_s['orderId'][i]
     spot_timexr = pd.to_datetime(complete_df_s['time'][i], unit='ms')
+    spot_timexr = str(spot_timexr).split(' ')[0]
     spot_timex = complete_df_s['time'][i]
-    spot_dy = spot_timexr.day
+    spot_dy = spot_timexr
+    
+    """ DROP ALL TRADES BEFORE A CERTAIN DATE.... """
+
+
     print(spot_dy)
 
     
@@ -221,9 +228,11 @@ for i in complete_df_s.index:
         fut_tik = complete_df_f['symbol'][j][:-7]
         full_tik = complete_df_f['symbol'][j]
         
+        fut_pri = complete_df_f['price'][j]
+        
 
-        fut_dy = pd.to_datetime(complete_df_f['time'][j], unit='ms').day  ###Timestamp chech as STR YY/MM/DD
-
+        fut_dy = complete_df_f['date'][j]  ###Timestamp chech as STR YY/MM/DD
+        fut_dy = str(fut_dy).split(' ')[0]
         if fut_tik in spot_tik and spot_dy == fut_dy:
             print("found! ---")
             counter +=1
@@ -232,7 +241,8 @@ for i in complete_df_s.index:
             #print(spot_timexr)
             
             pos_found[f'{spot_tik} #{counter}'] = {
-                            "precio": spot_pricex,
+                            "precio_s": spot_pricex,
+                            "precio_f": float(fut_pri),
                             "monto": spot_amountx,
                             "tiemp": spot_timexr,
                             "timestmp":spot_timex,
@@ -248,8 +258,10 @@ names = names.str[:-3]
 df["symbol"] = names
 
 
+"""   Separating orders completed once vs many orders in SPOT market  """
 single_orders = df.drop_duplicates(subset=['orderId', 'tiemp'], keep=False).reset_index(drop=True)
-many_orders = df[df.duplicated(subset=["orderId", "symbol"], keep=False)].reset_index(drop=True)
+many_orders = df[df.duplicated(subset=['orderId',"symbol"], keep=False)].reset_index(drop=True)
+             ###################### POTENTIAL PROBLEM WITH ORDER IDS
     
     
 """
@@ -260,7 +272,8 @@ for i in range(len(single_orders)):
     #print(i)
     #print(single_orders.loc[i, "precio"], single_orders.loc[i, "symbol"])
     #Add average spot price and time to list        
-    prices_spot.append(single_orders.loc[i, "precio"])
+    prices_spot.append(single_orders.loc[i, "precio_s"])
+    prices_fut.append(single_orders.loc[i, "precio_f"])
     timestamps_spot.append(float(single_orders.loc[i, "timestmp"]))
     amounts_spot.append(single_orders.loc[i, "monto"])
     
@@ -277,12 +290,17 @@ for i in range(len(single_orders)):
 """
     REGISTER ALL INFO ON MULTIPLE ORDERS
 """
+"""
+cantzxx = many_orders.groupby(["timestmp"], as_index=False)["monto"].sum()
+price_szxx = many_orders.groupby(["timestmp"], as_index=False)["precio_s"].mean()
 
-cantzxx = many_orders.groupby(["timestmp"])["monto"].sum()
-pricezxx = many_orders.groupby(["timestmp"])["precio"].mean()
-timezxx = many_orders.groupby(["timestmp"])["timestmp"].mean()
-timestampzxx = many_orders.groupby(["timestmp"])["tiemp"].mean()
-contractzxx = many_orders.groupby(["timestmp"])["contrato"].apply(lambda tags: '/'.join(tags))
+##############################
+price_fzxx = many_orders.groupby(["precio_f"], as_index=False).agg({'precio_f': pd.Series.mode})
+##############################
+
+timezxx = many_orders.groupby(["timestmp"], as_index=False)["timestmp"].mean()
+timestampzxx = many_orders.groupby(["timestmp"], as_index=False)["timestmp"].mean()
+contractzxx = many_orders.groupby(["timestmp"], as_index=False)["contrato"].apply(lambda tags: '/'.join(tags))
 
 
 for times in cantzxx.index:
@@ -290,7 +308,9 @@ for times in cantzxx.index:
     print(cantzxx.loc[times])
     
     #Add average spot price and time to list        
-    prices_spot.append(pricezxx.loc[times])
+    prices_spot.append(price_szxx.loc[times])
+    prices_fut.append(price_fzxx.loc[times])
+    
     timestamps_spot.append(timezxx.loc[times])
     amounts_spot.append(cantzxx.loc[times])
     
@@ -306,7 +326,44 @@ for times in cantzxx.index:
         #print(mat_type)
     
     
+"""
+many_orders = many_orders.groupby('timestmp').agg(lambda x: set(x)).reset_index()
+
+for i in many_orders.index:
+    print(many_orders["precio_s"][i])
+    many_orders["precio_s"][i] = sum(many_orders['precio_s'][i])/len(many_orders['precio_s'][i])
+    many_orders["precio_f"][i] = sum(many_orders['precio_f'][i])/len(many_orders['precio_f'][i])
+
+    many_orders["monto"][i] = sum(many_orders['monto'][i])
+    many_orders["contrato"][i] = str(many_orders['contrato'][i])[2:-2]
     
+    
+    prices_spot.append(many_orders["precio_s"][i])
+    prices_fut.append(many_orders["precio_f"][i])
+    
+    timestamps_spot.append(many_orders["timestmp"][i])
+    amounts_spot.append(many_orders["monto"][i])
+    
+    short_date = many_orders["contrato"][i]
+    short_date = short_date.split("_")[1]
+    #print(short_date)
+    #maturity.append(f'20{short_date[:-4]}-{short_date[4:]}-{short_date[2:-2]} 00:00:00')
+    maturity.append(date(int(f'20{short_date[:-4]}'),int(f'{short_date[2:-2]}'),int(f'{short_date[4:]}')))
+    #print(maturity)
+    
+    if many_orders["contrato"][i][-6:] == semestral:
+        mat_type.append("semestral")
+        #print(mat_type)
+    
+
+
+
+    
+
+    
+    
+
+
 
 tasas_dir = []
 tasas_anuales = []
