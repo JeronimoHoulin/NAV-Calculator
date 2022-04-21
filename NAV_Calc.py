@@ -28,7 +28,7 @@ cartera0 = 21050#1801
 print(f'El valor de la cartera a principio de més: ${cartera0}\n')
 
 #Define 2 maturities 
-trimestral = "220325"
+trimestral = "220930"
 semestral = "220624"
 ##########################################################################################################
 """LAS DE CHAKANA (JERO) """
@@ -45,8 +45,8 @@ os.chdir('C:/Users/Usuario/Desktop/Chakana/SpecialOps/binance/Contailidad')
 #api_secret = os.getenv("API_SECRET")
 
 """ LAS DE JERO """
-#api_secret = "6Ttytmac15sqjqngh57HyQSUpybrXYB5de74JgIMqgO4GGu6Iu0XQJHXp5De4Ubi"
-#api_key = "PUmKpL6YZKJIyJyYPj4b2RgFFHqplUfGnXH4QNGB5QkYOyhjYO0WrQr6bkCN0vzm"
+#api_secret = ""
+#api_key = ""
 
 """
 Passing intel from Binance official API docs
@@ -61,7 +61,7 @@ spot_url = "https://api.binance.com/api/v3/myTrades"
 
 #Make a for loop for all traded tikkers: 
 ##########################################################################################################
-my_tickers = ["XRPUSDT", "LINKUSDT", "LTCUSDT", "BTCUSDT", "ETHUSDT"]
+my_tickers = ["XRPUSDT", "LTCUSDT", "ETHUSDT"]
 
 ##########################################################################################################
 
@@ -133,7 +133,7 @@ complete_df_s = complete_df_s.reset_index(drop=True)
 
 #####################
 
-my_tickers_f = ["XRPUSD_220624", "LINKUSD_220624", "LTCUSD_220624", "ETHUSD_220930"] #############MANUALLY INPUT ALL POSITIONS OPENED (view in Binance account directly)
+my_tickers_f = ["XRPUSD_220624", "LTCUSD_220624", "ETHUSD_220930", "XRPUSD_220930"] #############MANUALLY INPUT ALL POSITIONS OPENED (view in Binance account directly)
 
 
 fut_url = "https://dapi.binance.com/dapi/v1/userTrades"
@@ -286,6 +286,9 @@ for i in range(len(single_orders)):
     if single_orders.loc[i, "contrato"][-6:] == semestral:
         mat_type.append("semestral")
         #print(mat_type)
+    if single_orders.loc[i, "contrato"][-6:] == trimestral:
+        mat_type.append("trimestral")
+        #print(mat_type)
             
 """
     REGISTER ALL INFO ON MULTIPLE ORDERS
@@ -354,11 +357,13 @@ for i in many_orders.index:
     if many_orders["contrato"][i][-6:] == semestral:
         mat_type.append("semestral")
         #print(mat_type)
+    if many_orders["contrato"][i][-6:] == trimestral:
+        mat_type.append("trimestral")
+        #print(mat_type)
     
 
 
 
-    
 
     
     
@@ -368,11 +373,13 @@ for i in many_orders.index:
 tasas_dir = []
 tasas_anuales = []
 
-    
-for i in range(0, len(complete_df_f)):
-    
-    spot = float(prices_spot[i])
-    fut = float(complete_df_f.iloc[i]['price'])
+prices_spot = pd.DataFrame (prices_spot, columns = ['pricess'])
+prices_fut = pd.DataFrame (prices_fut, columns = ['pricesf'])
+
+for i in range(0, len(prices_spot)):
+    print(i)
+    spot = float(prices_spot['pricess'][i])
+    fut = float(prices_fut['pricesf'][i])
 
     print('F = $' + str(round(fut, 1)))
     print("-----------")
@@ -402,7 +409,7 @@ for i in range(0,len(tasas_dir)):
     tasas_anuales.append(((((tasas_dir[i]/days)+1)**365-1)))
         
 
-print(f'\nTasas anuales = {tasas_anuales}\n')
+print(f'\nTasas directas = {tasas_dir}\n')
 
 
         
