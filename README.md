@@ -2,7 +2,6 @@
 Monthly NAV calculator for Chakana's Crypto Alternative Opportunity (CAO) fund.
 
 # Website => https://www.chakana.com.ar/
-# Dashboard => https://jeronimohoulin.github.io/
 
 # Strategy:
 
